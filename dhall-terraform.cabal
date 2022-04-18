@@ -1,6 +1,6 @@
-cabal-version:       2.0
+cabal-version:       2.4
 name:                dhall-terraform
-version:             0.3.0
+version:             0.4.0
 synopsis:            Creates Terraform resources using Dhall
 description:         Generate Dhall types for an arbitrary Terraform provider using the provider schema.
 license:             MIT
@@ -12,7 +12,7 @@ category:            Utility
 build-type:          Simple
 extra-doc-files:     README.md
                    , CHANGELOG.md
-tested-with:         GHC == 8.10.4
+tested-with:         GHC == 8.10.7
 
 library
   hs-source-dirs:      src

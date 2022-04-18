@@ -1,0 +1,13 @@
+cradle:
+  cabal:
+    - path: "src"
+      component: "lib:dhall-terraform"
+
+    - path: "app/Main.hs"
+      component: "dhall-terraform:exe:dhall-terraform-libgen"
+
+    - path: "app/Paths_dhall_terraform.hs"
+      component: "dhall-terraform:exe:dhall-terraform-libgen"
+
+    - path: "test"
+      component: "dhall-terraform:test:dhall-terraform-test"
