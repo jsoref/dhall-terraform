@@ -138,8 +138,8 @@ mkRecord ty rootPath name block = do
         (Dhall.Lam
            Nothing
            (Dhall.makeFunctionBinding "name" Dhall.Text)
-           (Dhall.TextLit (Dhall.Chunks [ ("${" <> tfTypeToText t <> ".", Dhall.Var $ Dhall.V "name" 0)
-                                        , ("." <> p <> ".", Dhall.App showVar $ Dhall.Var $ Dhall.V "field" 0)
+           (Dhall.TextLit (Dhall.Chunks [ ("${" <> tfTypeToText t <> "." <> p <> ".", Dhall.Var $ Dhall.V "name" 0)
+                                        , (".", Dhall.App showVar $ Dhall.Var $ Dhall.V "field" 0)
                                         ] "}")))
 
     defAttrs = attrs toDefault
