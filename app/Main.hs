@@ -87,21 +87,26 @@ mkRecord ty rootPath name block = do
   let recordPath = rootPath </> Turtle.fromText (name <> ".dhall")
   let record =
         Dhall.Let
-          (Dhall.makeBinding "type" (mkBlockFields block)) $
-          Dhall.RecordLit $
-            Dhall.makeRecordField
-              <$> Dhall.Map.fromList
-                [ ("Type", mkBlockType block)
-                , ("default", mkBlockDefault block)
-                , ("Fields", typeVar)
-                , ("showField", mkBlockShowField block)
-                , ("ref", mkBlockRef name ty block)
-                ]
+          (Dhall.makeBinding "show" (mkBlockShowField block)) $
+          Dhall.Let
+            (Dhall.makeBinding "type" (mkBlockFields block)) $
+            Dhall.RecordLit $
+              Dhall.makeRecordField
+                <$> Dhall.Map.fromList
+                  [ ("Type", mkBlockType block)
+                  , ("default", mkBlockDefault block)
+                  , ("Fields", typeVar)
+                  , ("showField", showVar)
+                  , ("ref", mkBlockRef name ty block)
+                  ]
   Turtle.mktree rootPath
   writeDhall recordPath record
   where
     typeVar :: Dhall.Expr s a
     typeVar = Dhall.Var $ Dhall.V "type" 0
+
+    showVar :: Dhall.Expr s a
+    showVar = Dhall.Var $ Dhall.V "show" 0
 
     mkBlockType :: BlockRepr -> Expr
     mkBlockType b = Dhall.Record $ Dhall.makeRecordField <$> Dhall.Map.fromList (typeAttrs b <> typeNested b)
@@ -134,7 +139,7 @@ mkRecord ty rootPath name block = do
            Nothing
            (Dhall.makeFunctionBinding "name" Dhall.Text)
            (Dhall.TextLit (Dhall.Chunks [ ("${" <> tfTypeToText t <> ".", Dhall.Var $ Dhall.V "name" 0)
-                                        , ("." <> p <> ".", Dhall.Var $ Dhall.V "field" 0)
+                                        , ("." <> p <> ".", Dhall.App showVar $ Dhall.Var $ Dhall.V "field" 0)
                                         ] "}")))
 
     defAttrs = attrs toDefault
