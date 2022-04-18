@@ -77,8 +77,10 @@ mkRecord rootPath name block = do
         Dhall.RecordLit $
           Dhall.makeRecordField
             <$> Dhall.Map.fromList
-              [ ("Type", mkBlockType block),
-                ("default", mkBlockDefault block)
+              [ ("Type", mkBlockType block)
+              , ("default", mkBlockDefault block)
+              , ("Fields", mkBlockFields block)
+              , ("showField", mkBlockShowField block)
               ]
   Turtle.mktree rootPath
   writeDhall recordPath record
@@ -88,6 +90,22 @@ mkRecord rootPath name block = do
 
     mkBlockDefault :: BlockRepr -> Expr
     mkBlockDefault b = Dhall.RecordLit $ Dhall.makeRecordField <$> Dhall.Map.fromList (defAttrs b <> defNested b)
+
+    mkBlockFields :: BlockRepr -> Expr
+    mkBlockFields b = Dhall.Union $ Nothing <$ (Dhall.Map.fromList (defAttrs b <> defNested b))
+
+    mkBlockShowField :: BlockRepr -> Expr
+    mkBlockShowField b =
+      Dhall.Lam
+         Nothing
+         (Dhall.makeFunctionBinding "x" (mkBlockFields b))
+         (Dhall.Merge
+           (Dhall.RecordLit $
+             Dhall.Map.fromList $
+            (\(nm, _) -> (nm, Dhall.makeRecordField $ Dhall.TextLit (Dhall.Chunks [] nm))) <$>
+            (typeAttrs b <> typeNested b))
+           (Dhall.Var $ Dhall.V "x" 0)
+           Nothing)
 
     defAttrs = attrs toDefault
     typeAttrs = attrs Just

@@ -1,8 +1,0 @@
-cradle:
-  cabal:
-    - path: "src/"
-      component: lib:dhall-terraform
-    - path: "app/"
-      component: executable:dhall-terraform-libgen
-    - path: "test/"
-      component: test-suite:dhall-terraform-test

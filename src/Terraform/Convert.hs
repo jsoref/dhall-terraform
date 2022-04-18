@@ -6,6 +6,7 @@ module Terraform.Convert
   ( toType,
     attrToType,
     toDefault,
+    toFields,
     nestedToType,
     noNestedBlocks,
     noAttrs,
@@ -30,6 +31,11 @@ toDefault :: Expr -> Maybe Expr
 toDefault e = case e of
   (Dhall.Record kvs) -> Just $ Dhall.RecordLit kvs
   (Dhall.App Dhall.Optional t) -> Just $ Dhall.App Dhall.None t
+  _ -> Nothing
+
+toFields :: Expr -> Maybe Expr
+toFields e = case e of
+  Dhall.Record kvs -> Just $ Dhall.Union (Nothing <$ kvs)
   _ -> Nothing
 
 -- | Converts a nested block to a Dhall expression.
