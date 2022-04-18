@@ -69,22 +69,38 @@ writeDhall filepath expr = do
         }
     )
 
+data TFType =
+    TFProvider
+  | TFResource
+  | TFData
+
+tfTypeToText :: TFType -> Text
+tfTypeToText TFProvider = "provider"
+tfTypeToText TFResource = "resource"
+tfTypeToText TFData = "data"
+
 -- | Generate a completion record for the resource.
-mkRecord :: Turtle.FilePath -> Text -> BlockRepr -> IO ()
-mkRecord rootPath name block = do
+mkRecord :: TFType -> Turtle.FilePath -> Text -> BlockRepr -> IO ()
+mkRecord ty rootPath name block = do
   let recordPath = rootPath </> Turtle.fromText (name <> ".dhall")
   let record =
-        Dhall.RecordLit $
-          Dhall.makeRecordField
-            <$> Dhall.Map.fromList
-              [ ("Type", mkBlockType block)
-              , ("default", mkBlockDefault block)
-              , ("Fields", mkBlockFields block)
-              , ("showField", mkBlockShowField block)
-              ]
+        Dhall.Let 
+          (Dhall.makeBinding "type" (mkBlockFields block)) $
+          Dhall.RecordLit $
+            Dhall.makeRecordField
+              <$> Dhall.Map.fromList
+                [ ("Type", mkBlockType block)
+                , ("default", mkBlockDefault block)
+                , ("Fields", typeVar)
+                , ("showField", mkBlockShowField block)
+                , ("ref", mkBlockRef ty block)
+                ]
   Turtle.mktree rootPath
   writeDhall recordPath record
   where
+    typeVar :: Dhall.Expr s a
+    typeVar = Dhall.Var $ Dhall.V "type" 0
+
     mkBlockType :: BlockRepr -> Expr
     mkBlockType b = Dhall.Record $ Dhall.makeRecordField <$> Dhall.Map.fromList (typeAttrs b <> typeNested b)
 
@@ -98,7 +114,7 @@ mkRecord rootPath name block = do
     mkBlockShowField b =
       Dhall.Lam
          Nothing
-         (Dhall.makeFunctionBinding "x" (mkBlockFields b))
+         (Dhall.makeFunctionBinding "x" typeVar)
          (Dhall.Merge
            (Dhall.RecordLit $
              Dhall.Map.fromList $
@@ -106,6 +122,18 @@ mkRecord rootPath name block = do
             (typeAttrs b <> typeNested b))
            (Dhall.Var $ Dhall.V "x" 0)
            Nothing)
+
+    mkBlockRef :: TFType -> BlockRepr -> Expr
+    mkBlockRef t _ =
+      Dhall.Lam
+        Nothing
+        (Dhall.makeFunctionBinding "field" typeVar)
+        (Dhall.Lam
+           Nothing
+           (Dhall.makeFunctionBinding "name" Dhall.Text)
+           (Dhall.TextLit (Dhall.Chunks [ ("${" <> tfTypeToText t <> ".", Dhall.Var $ Dhall.V "name" 0)
+                                        , (".", Dhall.Var $ Dhall.V "field" 0)
+                                        ] "}")))
 
     defAttrs = attrs toDefault
     typeAttrs = attrs Just
@@ -125,10 +153,10 @@ mkRecord rootPath name block = do
         M.mapMaybe mapExpr $
           M.map nestedToType (fromMaybe noNestedBlocks $ _blockTypes b)
 
-generate :: Turtle.FilePath -> Map Text SchemaRepr -> IO ()
-generate rootDir schemas =
+generate :: TFType -> Turtle.FilePath -> Map Text SchemaRepr -> IO ()
+generate ty rootDir schemas =
   mapM_
-    (uncurry (mkRecord rootDir))
+    (uncurry (mkRecord ty rootDir))
     blocks
   where
     blocks = M.toList $ M.map _schemaReprBlock schemas
@@ -183,14 +211,14 @@ main = do
       providerDir = mainDir </> Turtle.fromText "provider"
       resourcesDir = mainDir </> Turtle.fromText "resources"
       dataSourcesDir = mainDir </> Turtle.fromText "data_sources"
-      schema_generator = uncurry generate
+      schema_generator = uncurry (uncurry generate)
 
   doc <- readSchemaFile (optSchemaFile parsedOpts)
 
   let generateDirs =
-        [ (providerDir, getProvider providerName doc),
-          (resourcesDir, getResources providerName doc),
-          (dataSourcesDir, getDataSources providerName doc)
+        [ ((TFProvider, providerDir), getProvider providerName doc),
+          ((TFResource, resourcesDir), getResources providerName doc),
+          ((TFData, dataSourcesDir), getDataSources providerName doc)
         ]
 
   mapConcurrently_ schema_generator generateDirs
