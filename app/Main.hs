@@ -87,9 +87,9 @@ mkRecord ty rootPath name block = do
   let recordPath = rootPath </> Turtle.fromText (name <> ".dhall")
   let record =
         Dhall.Let
-          (Dhall.makeBinding "show" (mkBlockShowField block)) $
+          (Dhall.makeBinding "type" (mkBlockFields block)) $
           Dhall.Let
-            (Dhall.makeBinding "type" (mkBlockFields block)) $
+            (Dhall.makeBinding "show" (mkBlockShowField block)) $
             Dhall.RecordLit $
               Dhall.makeRecordField
                 <$> Dhall.Map.fromList
@@ -115,7 +115,7 @@ mkRecord ty rootPath name block = do
     mkBlockDefault b = Dhall.RecordLit $ Dhall.makeRecordField <$> Dhall.Map.fromList (defAttrs b <> defNested b)
 
     mkBlockFields :: BlockRepr -> Expr
-    mkBlockFields b = Dhall.Union $ Nothing <$ (Dhall.Map.fromList (defAttrs b <> defNested b))
+    mkBlockFields b = Dhall.Union $ Nothing <$ (Dhall.Map.fromList (typeAttrs b <> typeNested b))
 
     mkBlockShowField :: BlockRepr -> Expr
     mkBlockShowField b =
