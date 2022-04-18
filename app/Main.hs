@@ -79,12 +79,14 @@ tfTypeToText TFProvider = "provider"
 tfTypeToText TFResource = "resource"
 tfTypeToText TFData = "data"
 
+type ProviderType = Text
+
 -- | Generate a completion record for the resource.
-mkRecord :: TFType -> Turtle.FilePath -> Text -> BlockRepr -> IO ()
+mkRecord :: TFType -> Turtle.FilePath -> ProviderType -> BlockRepr -> IO ()
 mkRecord ty rootPath name block = do
   let recordPath = rootPath </> Turtle.fromText (name <> ".dhall")
   let record =
-        Dhall.Let 
+        Dhall.Let
           (Dhall.makeBinding "type" (mkBlockFields block)) $
           Dhall.RecordLit $
             Dhall.makeRecordField
@@ -93,7 +95,7 @@ mkRecord ty rootPath name block = do
                 , ("default", mkBlockDefault block)
                 , ("Fields", typeVar)
                 , ("showField", mkBlockShowField block)
-                , ("ref", mkBlockRef ty block)
+                , ("ref", mkBlockRef name ty block)
                 ]
   Turtle.mktree rootPath
   writeDhall recordPath record
@@ -123,8 +125,8 @@ mkRecord ty rootPath name block = do
            (Dhall.Var $ Dhall.V "x" 0)
            Nothing)
 
-    mkBlockRef :: TFType -> BlockRepr -> Expr
-    mkBlockRef t _ =
+    mkBlockRef :: ProviderType -> TFType -> BlockRepr -> Expr
+    mkBlockRef p t _ =
       Dhall.Lam
         Nothing
         (Dhall.makeFunctionBinding "field" typeVar)
@@ -132,7 +134,7 @@ mkRecord ty rootPath name block = do
            Nothing
            (Dhall.makeFunctionBinding "name" Dhall.Text)
            (Dhall.TextLit (Dhall.Chunks [ ("${" <> tfTypeToText t <> ".", Dhall.Var $ Dhall.V "name" 0)
-                                        , (".", Dhall.Var $ Dhall.V "field" 0)
+                                        , ("." <> p <> ".", Dhall.Var $ Dhall.V "field" 0)
                                         ] "}")))
 
     defAttrs = attrs toDefault
